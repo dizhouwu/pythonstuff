@@ -1,0 +1,7 @@
+    y_pred = np.matmul(X, W) + b
+    error = y - y_pred
+    
+    # compute steps
+    W_new = W + learn_rate * np.matmul(error, X)
+    b_new = b + learn_rate * error.sum()
+    return W_new, b_new
