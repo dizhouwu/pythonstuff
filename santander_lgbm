@@ -1,0 +1,166 @@
+def missing_data(data):
+	total = data.isnull().sum()
+	percent = (data.isnull().sum()/data.isnull().count()*100)
+	tt = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+	types = []
+	for col in data.columns:
+		dtype = str(data[col].dtype)
+		types.append(dtype)
+	tt['Type'] = types
+	return (np.transpose(tt))
+
+# #features is 16
+def plot_feature_scatter(df1, df2, features):
+	i = 0
+	sns.set_style('whitegrid')
+	plt.figure()
+	fig, ax = plt.subplots(4,4, figsize = (14,14))
+	
+	for feature in features:
+		i+=1
+		plt.subplots(4,4,i)
+		plt.scatter(df1[feature],df2[feature],marker = '+'])
+		plt.xlabel(feature, fontsize = 9)
+	plt.show()
+	
+		
+def  plot_feature_distribution(df1, df2, label1, label2,features):
+	i = 0
+	sns.set_style('whitegrid')
+	plt.figure()
+	fig, ax = plt.subplots(10,10, figsize = (18,22))
+	
+	for feature in features:
+		i+=1
+		plt.subplots(10,10,i)
+		sns.kdeplot(df1[feature], bw= 0.5, label = label1)
+		sns.kdeplot(df2[feature], bw= 0.5, label =  label2)
+		plt.xlabel(feature, fontsize = 9)
+		locs, labels = plt.xticks()
+		plt.tick_params(axis='x', which='major', labelsize=6, pad=-6)
+		plt.tick_params(axis='y', which='major', labelsize=6)
+	plt.show();
+	
+'''
+example of use
+t0 = train_df.loc[train_df['target'] == 0]
+t1 = train_df.loc[train_df['target'] == 1]
+features = train_df.columns.values[2:102]
+plot_feature_distribution(t0, t1, '0', '1', features)
+'''
+
+
+#example of max, min etc distplot
+plt.figure(figsize=(16,6))
+plt.title("Distribution of max values per column in the train set")
+sns.distplot(t0[features].max(axis=0),color="red", kde=True,bins=120, label='target = 0')
+sns.distplot(t1[features].max(axis=0),color="blue", kde=True,bins=120, label='target = 1')
+plt.legend(); plt.show()
+
+#feature correlation
+%%time
+correlations = train_df[features].corr().abs().unstack().sort_values(kind = 'quicksort').reset_index()
+correlations = correlations[correlations['level_0']!=correlations['level_1']]
+correlations.head()
+	
+	
+#check duplicate values exist in columns
+features = train_df.columns.values[2:202]
+unique_max_train = []
+unique_max_test = []
+for feature in features:
+	values = train_df[feature].value_counts()
+	unique_max_train.append([feature, values.max(), values.idxmax()])
+	values = test_df[feature].value_counts()
+	unique_max_test.append([feature, values.max(), values.idxmax()])
+
+np.transpose((pd.DataFrame(unique_max_train, columns=['Feature', 'Max duplicates', 'Value'])).\
+            sort_values(by = 'Max duplicates', ascending=False).head(15))
+	
+	
+#example use of lightGBM
+param = {
+        'num_leaves': 6,
+        'max_bin': 63,
+        'min_data_in_leaf': 45,
+        'learning_rate': 0.01,
+        'min_sum_hessian_in_leaf': 0.000446,
+        'bagging_fraction': 0.55, 
+        'bagging_freq': 5, 
+        'max_depth': 14,
+        'save_binary': True,
+        'seed': 31452,
+        'feature_fraction_seed': 31415,
+         'feature_fraction': 0.51,
+        'bagging_seed': 31415,
+        'drop_seed': 31415,
+        'data_random_seed': 31415,
+        'objective': 'binary',
+        'boosting_type': 'gbdt',
+        'verbose': 1,
+        'metric': 'auc',
+        'is_unbalance': True,
+        'boost_from_average': False,
+    }
+	
+folds = StratifiedKFold(n_splits=9, shuffle=True, random_state=31415)
+oof = np.zeros(len(train_df))
+predictions = np.zeros(len(test_df))
+feature_importance_df = pd.DataFrame()
+
+for fold_, (trn_idx, val_idx) in enumerate(folds.split(train_df.values, target.values)):
+	print("Fold {}".format(fold_))
+	trn_data = lgb.Dataset(train_df.iloc[trn_idx][features], label=target.iloc[trn_idx])
+	val_data = lgb.Dataset(train_df.iloc[val_idx][features], label=target.iloc[val_idx])
+
+	num_round = 15000
+	clf = lgb.train(param, trn_data, num_round, valid_sets =[trn_data, val_data], verbose_eval = 1000, early_stopping_rounds = 250)
+	oof[val_idx] = clf.predict(train_df.iloc[val_idx][features], num_iteration=clf.best_iteration)
+	
+	fold_importance_df = pd.DataFrame()
+	fold_importance_df['Feature'] = features 
+	fold_importance_df['importance'] = clf.feature_importance()
+	fold_importance_df['fold'] = fold_ + 1
+	feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
+	
+	predictions += clf.predict(test_df[features], num_iteration=clf.best_iteration) / folds.n_splits
+	
+print("CV score: {:<8.5f}".format(roc_auc_score(target, oof)))
+
+
+cols = (feature_importance_df[["Feature", "importance"]]
+        .groupby("Feature")
+        .mean()
+        .sort_values(by="importance", ascending=False)[:150].index)
+best_features = feature_importance_df.loc[feature_importance_df.Feature.isin(cols)]
+
+plt.figure(figsize=(14,28))
+sns.barplot(x="importance", y="Feature", data=best_features.sort_values(by="importance",ascending=False))
+plt.title('Features importance (averaged/folds)')
+plt.tight_layout()
+plt.savefig('FI.png')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
