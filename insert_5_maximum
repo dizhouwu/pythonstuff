@@ -1,0 +1,17 @@
+def insert_5(N):
+    
+    is_negative = 1 if N < 0 else 0
+    N = abs(N)
+    n_list = [int(x) for x in str(N)]
+    is_done = False
+    ret = ''
+    for i in range(len(n_list)):
+        if not is_done:
+            if is_negative and n_list[i]>5:
+                ret += '5'
+                is_done = True
+            elif not is_negative and n_list[i] < 5:
+                ret +='5'
+                is_done = True
+        ret += str(n_list[i])
+    return -1*int(ret) if is_negative else int(ret)
