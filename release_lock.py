@@ -9,3 +9,31 @@ class SignalHandlerLockMixin:
             self.redis_lock.release_lock()
         except:
             pass
+
+import concurrent.futures
+import signal
+import os
+import time
+def run_process():
+    print(f"Child process: {os.getpid()}")
+    def handler(signum, frame):
+        print(f'Signal handler called with signal {signum} for process :{os.getpid()}\n')
+    signal.signal(signal.SIGINT, handler)
+    time.sleep(10)
+
+
+def handler(signum, frame):
+    print(f'Signal handler called with signal {signum} for process :{os.getpid()}\n')
+
+
+signal.signal(signal.SIGINT, handler)
+
+
+with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
+
+    print(f"main process: {os.getpid()}")
+    for i in range(2):
+        executor.submit(run_process)
+    print(f"all process submitted")
+
+
