@@ -13,20 +13,22 @@ class SignalHandlerLockMixin:
 import concurrent.futures
 import signal
 import os
+import sys
 import time
 def run_process():
     print(f"Child process: {os.getpid()}")
     def handler(signum, frame):
         print(f'Signal handler called with signal {signum} for process :{os.getpid()}\n')
-    signal.signal(signal.SIGINT, handler)
-    time.sleep(10)
+        sys.exit()
+    signal.signal(signal.SIGTERM, handler)
+    time.sleep(2000000)
 
 
 def handler(signum, frame):
     print(f'Signal handler called with signal {signum} for process :{os.getpid()}\n')
 
 
-signal.signal(signal.SIGINT, handler)
+signal.signal(signal.SIGTERM, handler)
 
 
 with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
@@ -35,5 +37,8 @@ with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
     for i in range(2):
         executor.submit(run_process)
     print(f"all process submitted")
+    time.sleep(2000000)
+
+
 
 
