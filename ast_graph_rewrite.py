@@ -1,21 +1,14 @@
 import ast
-import functools
-import inspect
-ns = {}
-
-
-import ast
 import inspect
 import types
 
+ns = {}
 class Rewrite(ast.NodeTransformer):
-    # def visit_FunctionDef(self, node):
-    #     print(node.name)
-    #     return node
     
     def visit_arg(self, node):
-        print(dir(node))
         print(node.arg)
+        if node.arg in ns:
+            return ns[node.arg]
         return node
         
 def dag(f):
@@ -32,5 +25,5 @@ def dag(f):
     return new_f
 
 @dag
-def foo(x):
-    return x
+def foo(a,b):
+    return a+b
